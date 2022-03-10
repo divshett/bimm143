@@ -1,2 +1,2 @@
 # bimm143
-bioinformatics lab class wi22
+bioinformatics [bimm143] wi22 @ ucsd
