@@ -13,7 +13,7 @@ Class08: [Analysis of Human Breast Cancer Cells](https://github.com/dxn-sh/bimm1
 
 Class09: [Structural Bioinformatics](https://github.com/dxn-sh/bimm143/blob/main/class09/class09.pdf) 
 
-Class10: [Population Analysis](https://github.com/dxn-sh/bimm143/blob/main/class10/class10.pdf) 
+Class10: [Population Analysis](https://github.com/dxn-sh/bimm143/blob/main/class10/boxplot.pdf) 
 
 Class11: [Transcriptomics & RNA-Seq Data Analysis](https://github.com/dxn-sh/bimm143/blob/main/class11/class11.pdf) 
 
