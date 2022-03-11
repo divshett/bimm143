@@ -1,0 +1,321 @@
+---
+title: 'Class 12: RNA-Seq Mini Project'
+author: "Divya Shetty (A15390408)"
+date: "2/24/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+# Differential Expression Analysis
+
+
+```{r setup, message = FALSE}
+library(DESeq2)
+library(ggplot2)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+```
+
+Load the counts and metadata files.
+
+```{r}
+metaFile <- "GSE37704_metadata.csv"
+countFile <- "GSE37704_featurecounts.csv"
+
+#import metadata
+colData = read.csv(metaFile, row.names = 1)
+head(colData)
+
+#import countData
+countData = read.csv(countFile, row.names = 1)
+head(countData)
+```
+
+
+**Q1: Complete the code below to remove the first column from countData.**
+
+```{r}
+countData <- as.matrix(countData[,-1])
+head(countData)
+```
+
+
+**Q2: Complete the code below to filter countData to exclude genes (ie. rows) that have 0 read counts across all samples (ie. columns).**
+
+```{r}
+counts <- countData[rowSums(countData) > 0, ]
+head(counts)
+```
+
+
+## Running DESeq2
+
+
+Set up the DESeqDataSet object required for the DESeq() function, then run the DESeq pipeline. 
+
+```{r dseq}
+dds = DESeqDataSetFromMatrix(countData = counts,
+                             colData = colData,
+                             design =~condition)
+dds = DESeq(dds)
+```
+```{r}
+dds
+```
+
+
+Get results for the HoxA1 knockdown versus control siRNA. These are located in the colData input, under the names "hoxa1_kd" and "control_sirna".
+
+```{r results}
+res = results(dds, contrast = c("condition", "hoxa1_kd", "control_sirna"))
+```
+
+
+**Q3: Call the summary() function on your results to get a sense of how many genes are up or down-regulated at the default 0.1 p-value cutoff.**
+
+```{r}
+summary(res)
+```
+
+
+## Volcano Plot
+
+We'll make a volcano plot to visualize the data. A volcano plot is a plot of log2 fold change vs. -log adjusted p-value.
+
+```{r}
+plot( res$log2FoldChange, -log(res$padj) )
+```
+
+
+**Q4: Complete the code below to add colors and axis labels.**
+
+```{r colored volcano plot}
+#make a color vector for all genes
+mycols <- rep("gray", nrow(res) )
+
+#RED = genes with absolute fold change above 2
+mycols[ abs(res$log2FoldChange) > 2 ] <- "red"
+
+#BLUE = those with adjusted p-value less than 0.01
+#AND absolute fold change more than 2
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[inds] <- "blue"
+
+plot( res$log2FoldChange, -log(res$padj), col = mycols, xlab = "Log2(FoldChange)", ylab = "-Log(P-value)" )
+```
+
+
+BONUS! Try summarizing our results with a ggplot.
+
+```{r ggplot}
+tmp1 <- as.data.frame(res)
+
+ggplot(tmp1) +
+  aes(x = log2FoldChange, y = -log(padj)) +
+  geom_point()
+```
+
+
+## Adding Gene Annotation
+
+Our results currently have information about Ensembl gene IDs. However, KEGG pathways use Entrez gene annotations!
+
+**Q5: Use the mapIDs() function multiple times to add SYMBOL, ENTREZID and GENENAME annotation to our results.**
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r symbol}
+res$symbol = mapIds(org.Hs.eg.db,
+                    keys = row.names(res), 
+                    keytype = "ENSEMBL",
+                    column = "SYMBOL",
+                    multiVals = "first")
+```
+
+```{r entrez}
+res$entrez = mapIds(org.Hs.eg.db,
+                    keys = row.names(res),
+                    keytype = "ENSEMBL",
+                    column = "ENTREZID",
+                    multiVals = "first")
+```
+
+```{r name}
+res$name =   mapIds(org.Hs.eg.db,
+                    keys = row.names(res),
+                    keytype = "ENSEMBL",
+                    column = "GENENAME",
+                    multiVals = "first")
+```
+
+```{r}
+head(res, 10)
+```
+
+
+BONUS! Us EnhancedVolcano to visualize the results.
+
+```{r}
+library(EnhancedVolcano)
+
+tmp2 <- as.data.frame(res)
+
+EnhancedVolcano(tmp2,
+    lab = tmp2$symbol,
+    x = 'log2FoldChange',
+    y = 'pvalue')
+```
+
+
+**Q6: Reorder these results by adjusted p-value and save them to a CSV file in your current project directory**
+
+```{r}
+reorder = res[order(res$pvalue),]
+write.csv(reorder, file = "deseq_results1.csv")
+```
+
+
+# Pathway Analysis
+
+Bring back the biology! This will help with the interpretation of our results. We try to answer the question: *which pathways and functions feature heavily in our differentially expressed genes?*
+
+## KEGG Pathways
+
+```{r}
+library(pathview)
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+#focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+#examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+The gage() function requires a named vector of fold changes. The names are the Entrez gene IDs.
+
+```{r fold changes}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+
+Now run the gage analysis!
+
+```{r}
+keggres = gage(foldchanges, gsets = kegg.sets.hs)
+attributes(keggres)
+```
+
+
+Look at the first two down-regulated pathways.
+
+```{r 2 down-reg}
+head(keggres$less, 2)
+```
+
+
+Now use the pathview() function to make a pathway plot.
+
+```{r}
+pathview(gene.data = foldchanges, pathway.id = "hsa04110")
+```
+
+![](hsa04110.png)
+
+Above is the pathway hsa04110 - Cell cycle.
+
+
+Focus on the top 5 up-regulated pathways:
+
+```{r 5 up-reg}
+keggrespathways <- rownames(keggres$greater)[1:5]
+
+#extract the 8-character IDs of each string
+keggresids = substr(keggrespathways, start = 1, stop = 8)
+keggresids
+```
+
+```{r}
+pathview(gene.data = foldchanges, pathway.id = keggresids, species = "hsa")
+```
+
+
+**Q7: Do the same for the top 5 down-regulated pathways.**
+
+```{r 5 down-reg}
+keggresdown <- rownames(keggres$less)[1:5]
+
+keggresdownids = substr(keggresdown, start = 1, stop = 8)
+keggresdownids
+
+pathview(gene.data = foldchanges, pathway.id = keggresdownids, species = "hsa")
+```
+
+![](hsa03440.png)
+
+Above is pathway hsa03440 - homologous recombination.
+
+
+# Gene Ontology
+
+Using gene ontology, we can follow a similar procedure as above.
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+#focus on Biological Process subset of GO
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets = gobpsets, same.dir = TRUE)
+
+lapply(gobpres, head)
+```
+
+
+# Reactome Analysis
+
+Reactome is database consisting of biological molecules and their relation to pathways and processes. Let's conduct over-representation enrichment analysis and pathway-topology analysis with Reactome using the previous list of significant genes generated from our differential expression results above.
+
+Ouput the significant genes (ie. pval <= 0.05) to a plain text file.
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+
+write.table(sig_genes, file = "significant_genes.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+To perform the analysis, go to the Reactome site (https://reactome.org/PathwayBrowser/#TOOL=AT). Upload the sig_genes file, set parameters to "Project to Humans", and analyze!
+
+**Q8: What pathway has the most significant “Entities p-value”? Do the most significant pathways listed match your previous KEGG results? What factors could cause differences between the two methods?**
+
+The "endosomal/vacuolar pathway" has the most significant Entities p-value. The significant pathways are somewhat similar since they both include cell cycle pathways, though other processes differ. This difference may be due to the method in which the over-representation analysis was conducted, such as the threshold value for what counts as a differentially expressed gene.
+
+
+# Go Online
+
+Gene Set Gene Ontology (GO) Enrichment is a method to determine over-represented or under-represented GO terms for a given set of genes. GO terms are formal structured controlled vocabularies (ontologies) for gene products in terms of their biological function. The goal of this analysis is to determine the biological process the given set of genes are associated with.
+
+Go online (http://www.geneontology.org/page/go-enrichment-analysis) to perform Gene Set GO Enrichment.
+
+**Q9: What pathway has the most significant “Entities p-value”? Do the most significant pathways listed match your previous KEGG results? What factors could cause differences between the two methods?**
+
+The "detection of chemical stimulus involved in sensory perception" pathway had the most significant p-value. Most of the pathways don't match the KEGG results, which may be due to the reasons stated in Q8, that the process of analysis differs.
+
+# Save Results
+
+```{r}
+write.csv(res, file = "deseq_results2.csv")
+```
+

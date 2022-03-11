@@ -1,0 +1,26 @@
+---
+title: 'Class 10: Genome Informatics'
+author: "Divya Shetty (A15390408)"
+date: "2/17/2022"
+output: html_document
+---
+
+
+**Q5: What proportion of the Mexican Ancestry in Los Angeles sample population (MXL) are homozygous for the asthma associated SNP (G|G)?**
+
+```{r}
+#read genotype file from Ensmeble (rs8067378)
+mxl <- read.csv("373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+
+#proportions of genotypes
+table(mxl$Genotype..forward.strand.) / nrow(mxl)
+```
+
+
+What about a different population? Below, we take the British in England and Scotland (GBR).
+
+```{r}
+gbr <- read.csv("373522-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+table(gbr$Genotype..forward.strand.) / nrow(gbr)
+```
+

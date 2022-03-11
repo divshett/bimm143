@@ -1,0 +1,54 @@
+---
+title: 'Class 10: Population Analysis'
+author: "Divya Shetty (A15390408)"
+date: "2/17/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+**Q13. Read this file into R and determine the sample size for each genotype and their corresponding median expression levels for each of these genotypes.**
+
+```{r}
+#read text file
+exp <- read.table("rs8067378_ENSG00000172057.6.txt")
+head(exp)
+```
+
+*What are the sample sizes for the different genotypes?*
+```{r}
+table(exp$geno)
+```
+
+There are 108 samples for A/A, 233 samples for A/G, and 121 samples for G/G.
+
+
+*What are the median expression levels for the different genotypes?*
+
+```{r}
+#genotype: A/A
+summary(exp[exp$geno == "A/A", "exp"])
+```
+```{r}
+#genotype: A/G
+summary(exp[exp$geno == "A/G", "exp"])
+```
+```{r}
+#genotype: G/G
+summary(exp[exp$geno == "G/G", "exp"])
+```
+
+The median expression level for A/A is 31.25 and the mean is 31.82. The median expression level for A/G is 25.065 and the mean is 25.397. The median expression level for G/G is 20.074 and the mean is 20.0594.
+
+
+**Q14: Generate a boxplot with a box per genotype, what could you infer from the relative expression value between A/A and G/G displayed in this plot? Does the SNP effect the expression of ORMDL3?**
+
+```{r}
+library(ggplot2)
+
+#make a boxplot
+ggplot(exp, aes(x = geno, y = exp, fill = geno)) +
+  geom_boxplot(notch = TRUE)
+```
+
+There is a noticeable difference in the median level of expression of ORMDL3 between A/A and G/G, where the median expression level for A/A is higher than that of G/G. This would indicate that the SNP is associated with the expression of ORMDL3.

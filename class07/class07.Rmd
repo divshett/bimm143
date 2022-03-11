@@ -1,0 +1,237 @@
+---
+title: 'Week 6: Machine Learning with PCA'
+author: "Divya Shetty (A15390408)"
+date: "2/13/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Principal Component Analysis [PCA]
+
+## PCA of UK Food Data
+
+The UK food data is imported from a given input csv file.
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url)
+
+x
+```
+**Q1. How many rows and columns are in your new data frame named x? What R functions could you use to answer this questions?**
+```{r}
+dim(x)
+```
+There are 17 rows and 5 columns in data frame 'x'. You can use dim(x) or nrow(x) and ncol(x) to determine this.
+
+<br>
+
+There should be 4 columns: one for each country. Data frame is adjusted accordingly.
+
+```{r}
+x <- read.csv(url, row.names = 1)
+
+x
+```
+**Q2. Which approach to solving the ‘row-names problem’ mentioned above do you prefer and why? Is one approach more robust than another under certain circumstances?**  
+I prefer adjusting the row names in the read.csv() function since it requires less lines of code. It's also more robust because running "x <- x[,-1])" multiple times will continuously adjust the row names until there are no more columns left whereas editing read.csv() doesn't have this problem.
+
+<br>
+
+A few types of data visualizations are attempted, though they are uninformative.
+
+```{r}
+#barplot visualization
+barplot(as.matrix(x), beside = TRUE, col = rainbow(nrow(x)))
+```
+
+**Q3: Changing what optional argument in the above barplot() function results in the following plot?**  
+Change the value of beside to FALSE. This argument indicates whether the bar plot should have the columns side-by-side (TRUE) or have the stacked (FALSE)
+```{r}
+barplot(as.matrix(x), beside = FALSE, col = rainbow(nrow(x)))
+```
+
+<br>
+
+**Q5: Generating all pairwise plots may help somewhat. Can you make sense of the following code and resulting figure? What does it mean if a given point lies on the diagonal for a given plot?**
+```{r}
+#pairwise plot visualization
+pairs(x, col = rainbow(10), pch = 16)
+```
+
+Each plot illustrates the data comparison between two given countries. A given point on the diagonal of a given plot means the same amount of some food is consumed between the two countries.
+
+**Q6. What is the main differences between N. Ireland and the other countries of the UK in terms of this data-set?**  
+N. Ireland appears to have more differences in food consumptions than the other countries compared to one another as shown by the N. Ireland plots having more points spread out.
+
+<br>
+
+PCA to the rescue! PCA helps with analysis of many variables or large datasets.
+The main base R function is "prcomp()". This functions expects rows are observations and columns are variables, so input must be transposed.
+
+```{r}
+pca <- prcomp(t(x))
+
+#extra info about pca
+attributes(pca)
+summary(pca)
+```
+
+
+To create our PCA plot, we must access the "pca$x" component.
+
+**Q7. Complete the code below to generate a plot of PC1 vs PC2. The second line adds text labels over the data points.**
+```{r}
+plot(pca$x[,1], pca$x[,2], xlab = "PC1", ylab = "PC2", xlim = c(-270,500))
+text(pca$x[,1], pca$x[,2], colnames(x))
+```
+
+**Q8. Customize your plot so that the colors of the country names match the colors in our UK and Ireland map and table at start of this document.**
+```{r}
+country_color <- c("orange", "red", "blue", "green")
+
+plot(pca$x[,1], pca$x[,2], xlab = "PC1", ylab = "PC2", xlim = c(-270,500))
+text(pca$x[,1], pca$x[,2], colnames(x), col = country_color)
+```
+
+
+The square of "pca$sdev" can be used to calculate how much variation in the original data each PC accounts for.
+
+```{r}
+v <- round( pca$sdev^2/sum(pca$sdev^2) * 100 )
+barplot(v, xlab = "Principal Component", ylab = "Percent Variation")
+```
+
+<br>
+
+Digging deeper! The "pca$rotation" component can determine the influence of each of the original variables on the principal components ie. the loading scores.
+
+```{r}
+#loadings plot for PC1
+par(mar = c(10, 3, 0.35, 0))
+barplot(pca$rotation[,1], las = 2 )
+```
+
+**Q9: Generate a similar ‘loadings plot’ for PC2. What two food groups feature prominently and what does PC2 maninly tell us about?**
+```{r}
+#loadings plot for PC2
+par(mar = c(10, 3, 0.35, 0))
+barplot(pca$rotation[,2], las = 2 )
+```
+
+Fresh_potatoes and Soft_drinks are both featured prominently in the plot for PC2. Since Fresh_potatoes has a positive score this indicates that this food "pushes countries upwards, and since Soft_drinks has a negative score, it "pushes" countries downwards in the PCA plot.
+
+<br>
+
+Biplots can also be used to visualize this information, usually for small datasets.
+```{r}
+biplot(pca)
+```
+
+<br>
+
+## PCA of RNA-Seq Data
+
+Read the RNA-seq count dataset into the "rna.data" data frame.
+
+```{r}
+url2 <- "https://tinyurl.com/expression-CSV"
+rna.data <- read.csv(url2, row.names = 1)
+head(rna.data)
+```
+
+**Q10: How many genes and samples are in this data set?**
+```{r}
+dim(rna.data)
+```
+
+There are 10 genes and 100 samples.
+
+<br>
+
+A PCA plot is generated for the above data. Remember, the data must be transposed! A summary is generated to show how much variation in the original data each PC accounts for.
+
+```{r}
+pca2 <- prcomp(t(rna.data), scale = TRUE)
+plot(pca2$x[,1], pca2$x[,2], xlab = "PC1", ylab = "PC2")
+```
+```{r}
+#variation info
+summary(pca2)
+```
+
+
+Using the information provided from the summary, a scree plot can be generated to visualize the how much variation in the original data each PC accounts for.
+
+```{r}
+#variance per PC
+pca2.var <- pca2$sdev^2
+
+#percent variance bc more informative to look at 
+pca2.var.per <- round(pca2.var/sum(pca2.var)*100, 1)
+
+#make scree plot
+barplot(pca2.var.per, main = "Scree Plot", 
+        names.arg = paste0("PC", 1:10),
+        xlab = "Principal Component", ylab = "Percent Variation")
+```
+
+
+Now! Make the PCA plot look more presentable.
+
+```{r}
+#designate colors
+colvec <- colnames(rna.data)
+colvec[grep("wt", colvec)] <- "red"
+colvec[grep("ko", colvec)] <- "blue"
+
+#make PCA plot
+plot(pca2$x[,1], pca2$x[,2], col = colvec, pch = 16,
+     xlab = paste0("PC1 (", pca2.var.per[1], "%)"),
+     ylab = paste0("PC2 (", pca2.var.per[2], "%)"))
+
+#labels
+text(pca2$x[,1], pca2$x[,2], labels = colnames(rna.data), pos = c(rep(4,5), rep(2,5)))
+```
+
+
+We can also use ggplot2 to visualize the data in a different format.
+
+```{r}
+library(ggplot2)
+
+#convert PCA data into data frame with 'wt' and 'ko'
+df <- as.data.frame(pca2$x)
+df$samples <- colnames(rna.data) 
+df$condition <- substr(colnames(rna.data),1,2)
+
+#ggplot visualization
+ggplot(df) + 
+    aes(PC1, PC2, label = samples, col = condition) + 
+    geom_label(show.legend = FALSE) +
+    labs(title="PCA of RNASeq Data",
+       subtitle = "PC1 clealy seperates wild-type from knock-out samples",
+       x = paste0("PC1 (", pca2.var.per[1], "%)"),
+       y = paste0("PC2 (", pca2.var.per[2], "%)"),
+       caption="BIMM143 example RNA-seq data") +
+    theme_bw()
+```
+
+<br>
+
+OPTIONAL: Finding the top ten genes that contribute the most to PC1
+
+```{r}
+loading_scores <- pca2$rotation[,1]
+
+#greatest to least abs val to find top 10 contributors
+#that's positive (+) OR negative (-)
+gene_scores <- abs(loading_scores) 
+gene_score_ranked <- sort(gene_scores, decreasing = TRUE)
+
+#show the names of the top 10 genes
+top_10_genes <- names(gene_score_ranked[1:10])
+top_10_genes 
+```
+

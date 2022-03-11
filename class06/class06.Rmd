@@ -1,0 +1,185 @@
+---
+title: 'Week 5: R Functions Lab'
+author: "Divya Shetty (A15390408)"
+date: "2/5/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+## R Functions: How To Write Your Own
+
+### QUESTIONS
+
+**Q1. Write a function grade() to determine an overall grade from a vector of student homework assignment scores dropping the lowest single score. If a student misses a homework (i.e. has an NA value) this can be used as a score to be potentially dropped. Your final function should be adequately explained with code comments and be able to work on an example class gradebook such as this one in CSV format: “https://tinyurl.com/gradeinput”**
+
+```{r}
+# Example input vectors to start with
+student1 <- c(100, 100, 100, 100, 100, 100, 100, 90)
+student2 <- c(100, NA, 90, 90, 90, 90, 97, 80)
+student3 <- c(90, NA, NA, NA, NA, NA, NA, NA)
+```
+
+Step 1: Find the average of given vector of scores to determine a student's grade
+```{r}
+student1 <- c(100, 100, 100, 100, 100, 100, 100, 90)
+
+mean(student1)
+```
+
+Step 2: Determine the lowest score
+```{r}
+#returns index of the lowest score
+which.min(student1)
+```
+
+Step 3: Remove the lowest score from the vector
+```{r}
+#returns vector of scores without the lowest score
+student1[-8]
+```
+
+Step 4: NOW determine the average score when lowest score is dropped
+```{r}
+mean(student1[-which.min(student1)])
+```
+
+Step 5: Consider other students (edge cases). How should NA scores be dealt with?
+
+Approach #1: remove NA scores
+```{r}
+student2 <- c(100, NA, 90, 90, 90, 90, 97, 80)
+student3 <- c(90, NA, NA, NA, NA, NA, NA, NA)
+
+mean(student2, na.rm = TRUE)
+mean(student3, na.rm = TRUE)
+```
+HOWEVER, this approach is an unfair grading system...
+
+Approach #2: change NA scores to 0
+```{r}
+#find the index of NA values
+which(is.na(student2))
+which(is.na(student3))
+
+#replace the index values to 0
+student2[which(is.na(student2))] <- 0
+student3[which(is.na(student3))] <- 0
+
+#NOW find the mean grade
+mean(student2)
+mean(student3)
+```
+
+NICE! Use approach #2 and put it together with the code snippet from Step 4 to calculate the grade...
+```{r}
+student3[is.na(student3)] <- 0
+mean(student3[-which.min(student3)])
+```
+
+Step 6: Use the above code and make it into a function called **grade()**
+```{r}
+#' Returns the avg grade when lowest score dropped. Missing values treated as 0.
+#' 
+#' @param x numeric vector of student's scores
+#' @return avg score
+grade <- function(x) {
+  #consider missing scores as 0
+  x[is.na(x)] <- 0
+  #drop the lowest score when calculating avg score
+  mean(x[-which.min((x))])
+}
+```
+
+*Testing code...*
+```{r}
+grade(student1)
+grade(student2)
+grade(student3)
+```
+
+Step 7: Show that grade() works with given gradebook!
+```{r}
+#get score(s) from link to gradebook
+url <- "https://tinyurl.com/gradeinput"
+gradebook <- read.csv(url, row.names = 1)
+
+#use grades() for every student in gradebook
+apply(gradebook, 1, grade)
+```
+
+
+**Q2. Using your grade() function and the supplied gradebook, Who is the top scoring student overall in the gradebook?** 
+
+Use grade() on the gradebook and find the maximum of the results. This is the top scoring student.
+```{r}
+#store results of gradebook
+results <- apply(gradebook, 1, grade)
+
+#determine the max avg grade
+which.max(results)
+```
+ 
+
+**Q3. From your analysis of the gradebook, which homework was toughest on students (i.e. obtained the lowest scores overall?** 
+
+Step 1: Determine how gradebook is organized
+```{r}
+gradebook
+```
+
+Step 2: For each homework, should the mean score or the median score be used? Identify the homework with the lowest score.
+
+Approach #1: using the mean
+```{r}
+avg_scores <- apply(gradebook, 2, mean, na.rm = TRUE)
+avg_scores
+which.min(avg_scores)
+```
+
+Approach #2: using the median
+```{r}
+med_scores <- apply(gradebook, 2, median, na.rm = TRUE)
+med_scores
+which.min(med_scores)
+```
+
+
+Use a boxplot to visualize which statistic is better to use!
+```{r}
+boxplot(gradebook)
+```
+
+The median score for a homework best represents the homework that was toughest on students. 
+Therefore, the hardest homework was **hw2**.
+ 
+
+**Q4. From your analysis of the gradebook, which homework was most predictive of overall score (i.e. highest correlation with average grade score)?** 
+
+*What is the correlation between the average score for each student and the homework scores?*
+Step 1: replace NA scores with a 0
+```{r}
+masked <- gradebook
+masked[is.na(masked)] <- 0
+
+#check that all NA vvalues have been changed
+masked
+```
+
+Step 2: use the cor() function to calculate the correlation for each hw and determine the highest correlation
+```{r}
+#correlation for all hw
+cors <- apply(masked, 2, cor, x = results)
+cors
+
+#find the max correlation
+which.max(cors)
+```
+
+The homework that was most predictive of the overall score was **hw5**. 
+ 
+
+**Q5. Make sure you save your Rmarkdown document and can click the “Knit” button to generate a PDF foramt report without errors. Finally, submit your PDF to gradescope.** 
+
+[completed]
